@@ -38,6 +38,7 @@
     backgroundColor = chroma.random().hex().toUpperCase();
     foregroundColor =
       chroma.contrast(backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
+      dots = generateDots();
   }
 
   function swapColours() {
@@ -98,34 +99,66 @@
     }
   }
 
-  let dotsizes = [1, 1.5, 2, 3, 4, 6, 8, 10, 15, 20];
-  let dotAreas = dotsizes.map((size) => Math.PI * Math.pow(size, 2));
-  let targetArea = 450;
+  let svgElement;
+  let dots = []; // Initialize an empty array for dots
+  let dotSizes = [1, 1.5, 2, 3, 4, 6, 8, 10, 15, 20];
+  let dotAreas = dotSizes.map((size) => Math.PI * Math.pow(size, 2));
+  let targetArea = window.innerWidth * 400 / 240; // square px area to cover per dot size
   let dotsNeeded = dotAreas.map((area) => Math.ceil(targetArea / area));
+  let svgWidth; // Will hold the current width of the SVG
 
+  // Function to generate random positions for each dot, considering dotsNeeded
+  const generateDots = () => {
+    let newDots = [];
+    dotSizes.forEach((size, index) => {
+      for (let i = 0; i < dotsNeeded[index]; i++) {
+        newDots.push({
+          cx: Math.random() * svgWidth,
+          cy: Math.random() * 400, // Fixed height of 400px
+          r: size, // Example radius calculation
+        });
+      }
+    });
+    return newDots;
+  };
+
+  // Reactive statement to update dots when svgWidth changes
+  $: if (svgWidth) {
+    dots = generateDots();
+  }
+
+  // Update svgWidth based on the actual width of the SVG element
+  const updateWidth = () => {
+    svgWidth = svgElement.clientWidth;
+  };
+
+  // Add event listener to window resize to update width
   onMount(() => {
-    // Your code here
-  });
-
-  onDestroy(() => {
-    // Your code here
+    updateWidth(); // Initial width update
+    window.addEventListener("resize", updateWidth);
+    return () => {
+      window.removeEventListener("resize", updateWidth);
+    };
   });
 </script>
 
-<div class="s-bg-inverted p-8">
-  <h1 class="t3 text-left s-text-inverted">APCA Dataviz Contrast Checker</h1>
+<div class="s-bg-inverted px-8 pt-8 pb-4">
+  <h1 class="t4 text-left s-text-inverted">APCA Dataviz Contrast Checker</h1>
 </div>
 <div class="svg-container" style="background-color: {backgroundColor};">
-  <svg xmlns="http://www.w3.org/2000/svg">
-    <!-- Your SVG content here -->
-    <rect width="100%" height="100%" fill={backgroundColor} />
-
-    <circle cx="30px" cy="30px" r="20" fill={foregroundColor} />
+  <svg bind:this={svgElement} width="100%" height="100%">
+    <rect width="100%" height="100%" fill={backgroundColor}></rect>
+    
+    {#each dots as { cx, cy, r }}
+      {#if demand === "&lt; 1" || r >= parseFloat(demand)}
+        <circle cx={cx} cy={cy} r={r} fill={foregroundColor} />
+      {/if}
+    {/each}
   </svg>
 
   <!-- Choose colours box -->
   <div class="overlay-content flex justify-center pb-32">
-    <w-box bordered={true} class="w-fit mt-24">
+    <w-box bordered={true} class="w-fit mt-24 shadow-m">
       <h2 class="t3">Choose colours</h2>
       <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24">
         <w-textfield
@@ -321,6 +354,7 @@
   .svg-container {
     position: relative;
     height: 400px; /* Adjust based on your SVG size */
+    width: 100%;
   }
   .overlay-content {
     position: absolute;
