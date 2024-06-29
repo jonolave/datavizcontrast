@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/public/warp-logo-small.svg" />
+    <link
+      rel="stylesheet"
+      href="https://assets.finn.no/pkg/@warp-ds/fonts/v1/finn-no.css"
+    />
+    <link
+      rel="stylesheet"
+      href="https://assets.finn.no/pkg/@warp-ds/css/v1/tokens/finn-no.css"
+    />
+    <link rel="stylesheet"
+    href="https://assets.finn.no/pkg/@warp-ds/css/v1/resets.css" />
+    <link
+      rel="stylesheet"
+      href="https://assets.finn.no/pkg/@warp-ds/css/v1/components.css"
+    />
+    <title>APCA Dataviz Contrast</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  </head>
+  <body>
+    <div id="app"></div>
+
+    <script>
+      window.addEventListener("load", () => {
+        const updateGoatCounterSettings = () => {
+          const path = location.hash ? location.hash.slice(1) : "/"; // Remove the '#' and use as path
+          const settings = {
+            path: path,
+            // Optionally, add other properties like title or referrer if needed
+            title: document.title,
+            referrer: document.referrer,
+          };
+
+          const goatCounterScript = document.querySelector(
+            "script[data-goatcounter]"
+          );
+          goatCounterScript.setAttribute(
+            "data-goatcounter-settings",
+            JSON.stringify(settings)
+          );
+        };
+
+        // Update settings on initial load
+        updateGoatCounterSettings();
+
+        // Update settings whenever the hash changes
+        window.addEventListener("hashchange", updateGoatCounterSettings, false);
+      });
+    </script>
+
+    <script
+      data-goatcounter="https://datavizcontrast.goatcounter.com/count"
+      async
+      src="//gc.zgo.at/count.js"
+    ></script>
+
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>

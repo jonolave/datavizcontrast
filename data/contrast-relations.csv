@@ -1,0 +1,7 @@
+Foreground colour, Background colour, type
+components-button-primary-text, components-button-primary-background-default, Normal text
+components-button-primary-text, components-button-primary-background-hover, Normal text
+components-button-primary-text, components-button-primary-background-active, Normal text
+components-button-primary-icon, components-button-primary-background-default, Graphical objects
+components-button-primary-icon, components-button-primary-background-hover, Graphical objects
+components-button-primary-icon, components-button-primary-background-active, Graphical objects
