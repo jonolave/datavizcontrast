@@ -8,13 +8,13 @@ This happens automatically through Github Actions.
 
 ## To run locally
 Install:
-`npm install``
+`npm install`
 
 Run dev:
-´npm run dev`
+`npm run dev`
 
 Build to the /dist folder:
-´npm run build`
+`npm run build`
 
 NB: the files in /dist will probably not run locally as they need to be at the root directory. For hosting, manually upload to https://www.proisp.no/controlpanel/
 

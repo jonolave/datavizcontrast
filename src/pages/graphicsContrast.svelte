@@ -34,11 +34,14 @@
   let foregroundColor =
     chroma.contrast(backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
 
+  // Colour for drop shadow based on background colour
+  $: darkerBackgroundColor = chroma(backgroundColor).darken(2).alpha(0.3).css();
+
   function newRandomColours() {
     backgroundColor = chroma.random().hex().toUpperCase();
     foregroundColor =
       chroma.contrast(backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
-      dots = generateDots();
+    dots = generateDots();
   }
 
   function swapColours() {
@@ -99,13 +102,16 @@
     }
   }
 
+  // SVG size
   let svgElement;
+  let svgWidth;
+  let svgHeight;
+
   let dots = []; // Initialize an empty array for dots
   let dotSizes = [1, 1.5, 2, 3, 4, 6, 8, 10, 15, 20];
   let dotAreas = dotSizes.map((size) => Math.PI * Math.pow(size, 2));
-  let targetArea = window.innerWidth * 400 / 240; // square px area to cover per dot size
+  let targetArea = (window.innerWidth * 400) / 150; // square px area to cover per dot size
   let dotsNeeded = dotAreas.map((area) => Math.ceil(targetArea / area));
-  let svgWidth; // Will hold the current width of the SVG
 
   // Function to generate random positions for each dot, considering dotsNeeded
   const generateDots = () => {
@@ -114,7 +120,7 @@
       for (let i = 0; i < dotsNeeded[index]; i++) {
         newDots.push({
           cx: Math.random() * svgWidth,
-          cy: Math.random() * 400, // Fixed height of 400px
+          cy: Math.random() * svgElement.clientHeight, // Fixed height of 400px
           r: size, // Example radius calculation
         });
       }
@@ -124,44 +130,68 @@
 
   // Reactive statement to update dots when svgWidth changes
   $: if (svgWidth) {
+    targetArea = svgWidth * svgHeight / 150;
     dots = generateDots();
   }
 
-  // Update svgWidth based on the actual width of the SVG element
-  const updateWidth = () => {
+  $: if (svgHeight) {
+    targetArea = svgWidth * svgHeight / 150;
+    dots = generateDots();
+  }
+
+  // Update svgWidth and svgHeight based on the actual dimensions of the SVG element
+  const updateDimensions = () => {
     svgWidth = svgElement.clientWidth;
+    svgHeight = svgElement.clientHeight;
+    // console.log('SVG Dimensions:', svgWidth, 'x', svgHeight);
   };
 
   // Add event listener to window resize to update width
+
   onMount(() => {
-    updateWidth(); // Initial width update
-    window.addEventListener("resize", updateWidth);
+    updateDimensions(); // Initial dimensions update
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (let entry of entries) {
+        if (entry.target === svgElement) {
+          updateDimensions(); // Update dimensions based on the observed changes
+        }
+      }
+    });
+
+    resizeObserver.observe(svgElement);
+
     return () => {
-      window.removeEventListener("resize", updateWidth);
+      resizeObserver.disconnect();
     };
   });
 </script>
-
+<!-- Black banner -->
 <div class="s-bg-inverted px-8 pt-8 pb-4">
   <h1 class="t4 text-left s-text-inverted">APCA Dataviz Contrast Checker</h1>
 </div>
-<div class="svg-container" style="background-color: {backgroundColor};">
+<!-- Container for SVG and input box -->
+<div class="top-container border-b-2" style="background-color: {backgroundColor};">
+  <!-- SVG with dots -->
   <svg bind:this={svgElement} width="100%" height="100%">
     <rect width="100%" height="100%" fill={backgroundColor}></rect>
-    
+
     {#each dots as { cx, cy, r }}
       {#if demand === "&lt; 1" || r >= parseFloat(demand)}
-        <circle cx={cx} cy={cy} r={r} fill={foregroundColor} />
+        <circle {cx} {cy} {r} fill={foregroundColor} />
       {/if}
     {/each}
   </svg>
 
-  <!-- Choose colours box -->
-  <div class="overlay-content flex justify-center pb-32">
-    <w-box bordered={true} class="w-fit mt-24 shadow-m">
+  <!-- Full width container for Input box -->
+  <div class="flex items-center justify-center min-w-144 px-80 py-96">
+    <!-- Input box -->
+    <w-box bordered={true} class="inputbox w-fit z-10 rounded-8" style="box-shadow: 0px 6px 12px 0px {darkerBackgroundColor};">
       <h2 class="t3">Choose colours</h2>
+      <!-- Input fields -->
       <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24">
         <w-textfield
+          full-width
           label="Foreground colour"
           invalid={!foregroundIsValid}
           help-text={foregroundIsValid
@@ -185,11 +215,12 @@
         >
         </w-textfield>
       </div>
-      <div class="flex gap-16">
+      <!-- Buttons -->
+      <div class="flex flex-wrap gap-16">
         <w-button variant="primary" on:click={newRandomColours}
           >Random colours</w-button
         >
-        <w-button variant="secondary" on:click={swapColours}
+        <w-button full-width variant="secondary" on:click={swapColours}
           >Swap colours</w-button
         >
       </div>
@@ -197,17 +228,18 @@
   </div>
 </div>
 
+<!-- Result container -->
 <main class="flex flex-col items-center justify-center">
-  <!--   <h2 class="t2 mb-24">Contrast for graphics</h2>
- -->
 
-  <!-- Result in numbers -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-16">
-    <w-box bordered={true} class="">
+  <!-- Result in numbers, container for 3 boxes -->
+  <div class="flex flex-wrap justify-center gap-x-16 gap-y-16 w-full -mt-40">
+    <!-- 1: Lc -->
+    <w-box bordered={true} class="min-w-[180]">
       <p>APCA contrast:</p>
       <span class="t1">{Lc} Lc</span>
     </w-box>
-    <w-box bordered={true} class="">
+    <!-- 2: WCAG -->
+    <w-box bordered={true} class="min-w-[180]">
       <p>WCAG contrast:</p>
       {#if wcagContrast >= 3}
         <div class="flex gap-8">
@@ -221,8 +253,8 @@
         </div>
       {/if}
     </w-box>
-
-    <w-box bordered={true} class="">
+   <!-- 3: min size -->
+    <w-box bordered={true} class="min-w-[180]">
       <p>Minimum size:</p>
       {#if foregroundIsValid && backgroundIsValid}
         <span class="t1">{@html demand} px</span>
@@ -351,23 +383,20 @@
     text-decoration: underline;
     text-decoration-style: dotted;
   }
-  .svg-container {
+  .top-container {
     position: relative;
-    height: 400px; /* Adjust based on your SVG size */
+    height: 100%; /* Adjust based on your SVG size */
     width: 100%;
   }
-  .overlay-content {
+
+  .inputbox {
+    /*  box-shadow: 0px 6px 12px 0px #00000022; */
+  }
+
+  svg {
     position: absolute;
     top: 0;
     left: 0;
-    right: 0;
-    bottom: 0;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    /* Additional styling for your overlay content */
-  }
-  svg {
     width: 100%;
     height: 100%;
   }

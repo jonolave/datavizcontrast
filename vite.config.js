@@ -23,6 +23,12 @@ export default defineConfig({
       promiseImportName: i => `__tla_${i}`
     }),
   ],
+  server: {
+    // Set host to '0.0.0.0' to listen on all network interfaces
+    // Or use your specific IP address to restrict access
+    host: '0.0.0.0',
+    port: 3000, // Optional: Specify a port
+  },
   svelte: {
     template: {
       compilerOptions: {
