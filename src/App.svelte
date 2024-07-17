@@ -65,45 +65,94 @@
   }
 
   function updateInputFields() {
-    const foregroundInput = document.querySelector(
-      'w-textfield[label="Foreground colour"] input'
-    );
-    const backgroundInput = document.querySelector(
-      'w-textfield[label="Background colour"] input'
-    );
-
-    if (foregroundInput) {
-      foregroundInput.value = foregroundColor;
-    }
-
-    if (backgroundInput) {
-      backgroundInput.value = backgroundColor;
-    }
+    document.querySelector("#foregroundColor").value = foregroundColor;
+    document.querySelector("#backgroundColor").value = backgroundColor;
   }
 
   let backgroundIsValid = true;
   let foregroundIsValid = true;
 
+  // Foreground colour input fields
+  function validateForegroundColor(value) {
+    console.log("Validating foreground color:", value);
+    try {
+      const color = chroma(value).hex(); // Convert color name to hex
+      if (chroma.valid(color)) {
+        foregroundColor = color;
+        foregroundIsValid = true;
+        forceReRenderDots(); // Force re-render with new color
+      } else {
+        foregroundIsValid = false;
+      }
+    } catch (error) {
+      foregroundIsValid = false;
+      console.error("Invalid foreground color:", value, error);
+    }
+    updateInputFields();
+  }
+
+  function handleForegroundBlur(event) {
+    validateForegroundColor(event.target.value);
+  }
+
+  function handleForegroundKeydown(event) {
+    if (event.key === "Enter") {
+      validateForegroundColor(event.target.value);
+    }
+  }
+
+  // Background colour input fields
+  function validateBackgroundColor(value) {
+    try {
+      const color = chroma(value).hex(); // Convert color name to hex
+      if (chroma.valid(color)) {
+        backgroundColor = color;
+        backgroundIsValid = true;
+        forceReRenderDots(); // Force re-render with new color
+      } else {
+        backgroundIsValid = false;
+      }
+    } catch (error) {
+      backgroundIsValid = false;
+      console.error("Invalid background color:", value, error);
+    }
+    updateInputFields();
+  }
+
+  function handleBackgroundBlur(event) {
+    validateBackgroundColor(event.target.value);
+  }
+
+  function handleBackgroundKeydown(event) {
+    if (event.key === "Enter") {
+      validateBackgroundColor(event.target.value);
+    }
+  }
+
+  let wcagContrast = 0; // Initial value for wcagContrast
+  let Lc = 0; // Initial value for Lc
+
   // WCAG contrast, check only if valid colours
-  $: wcagContrast =
-    foregroundIsValid && backgroundIsValid
-      ? checkColors(foregroundColor, backgroundColor).contrast
-      : wcagContrast;
+  $: if (foregroundIsValid && backgroundIsValid) {
+    wcagContrast = checkColors(foregroundColor, backgroundColor).contrast;
+  } else {
+    wcagContrast = 0; // or another default value indicating invalid contrast
+  }
 
   // APCA contrast, check only if valid colours
   // https://www.npmjs.com/package/apca-w3
-  $: Lc =
-    foregroundIsValid && backgroundIsValid
-      ? Math.round(
-          Math.abs(
-            // @ts-ignore
-            APCAcontrast(
-              sRGBtoY(colorParsley(foregroundColor)),
-              sRGBtoY(colorParsley(backgroundColor))
-            )
-          )
+  $: if (foregroundIsValid && backgroundIsValid) {
+    Lc = Math.round(
+      Math.abs(
+        APCAcontrast(
+          sRGBtoY(colorParsley(foregroundColor)),
+          sRGBtoY(colorParsley(backgroundColor))
         )
-      : Lc;
+      )
+    );
+  } else {
+    Lc = 0;
+  }
 
   // Prepare list
   let sortedDemands = [...contrastDemands].sort((a, b) => b.Lc - a.Lc);
@@ -114,28 +163,16 @@
       ? (sortedDemands.find((demand) => demand.Lc <= Lc) || { Size: "No" }).Size
       : 100;
 
+  // New input fields
+
   function handleForegroundInput(event) {
     const value = event.target.value;
-    if (chroma.valid(value)) {
-      foregroundColor = chroma(value).hex();
-      foregroundIsValid = true;
-    } else {
-      foregroundIsValid = false;
-    }
-    updateInputFields();
-
+    validateForegroundColor(value);
   }
 
   function handleBackgroundInput(event) {
     const value = event.target.value;
-    if (chroma.valid(value)) {
-      backgroundColor = chroma(value).hex();
-      backgroundIsValid = true;
-    } else {
-      backgroundIsValid = false;
-    }
-    updateInputFields();
-
+    validateBackgroundColor(value);
   }
 
   // SVG size
@@ -302,31 +339,43 @@
     <p>Enter colour name or HEX code</p>
     <!-- Input fields -->
     <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24">
-      <w-textfield
-        full-width
-        label="Foreground colour"
-        invalid={!foregroundIsValid}
-        help-text={foregroundIsValid ? "" : "Not a valid colour"}
-        class="mt-16"
-        value={foregroundColor}
-    
-        on:input={handleForegroundInput}
-      >
-        <input type="text" value={foregroundColor} />
-      </w-textfield>
+      <!-- Input foreground -->
+      <div class="input-group flex flex-col mt-16">
+        <label class="font-bold text-caption" for="foregroundColor"
+          >Foreground colour</label
+        >
+        <input
+          type="text"
+          id="foregroundColor"
+          class="mt-4 px-8 py-12 rounded border s-border hover:s-border-hover"
+          on:blur={handleForegroundBlur}
+          on:keydown={handleForegroundKeydown}
+          on:input={foregroundColor}
+        />
+        {#if !foregroundIsValid}
+          <p class="error-text">Not a valid colour</p>
+        {/if}
+      </div>
 
-      <w-textfield
-        label="Background colour"
-        invalid={!backgroundIsValid}
-        help-text={backgroundIsValid ? "" : "Not a valid colour"}
-        class="mt-16"
-        value={backgroundColor}
-        on:change={handleBackgroundInput}
-     
-      >
-        <input type="text" value={backgroundColor} />
-      </w-textfield>
+      <!-- Input background -->
+      <div class="input-group flex flex-col mt-16">
+        <label class="font-bold text-caption" for="backgroundColor"
+          >Background colour</label
+        >
+        <input
+          type="text"
+          id="backgroundColor"
+          class="mt-4 px-8 py-12 rounded border s-border hover:s-border-hover"
+          on:blur={handleBackgroundBlur}
+          on:keydown={handleBackgroundKeydown}
+          on:input={backgroundColor}
+        />
+        {#if !backgroundIsValid}
+          <p class="error-text">Not a valid colour</p>
+        {/if}
+      </div>
     </div>
+
     <!-- Buttons -->
     <div class="flex flex-wrap gap-16">
       <w-button variant="primary" on:click={newRandomColours}
