@@ -10,6 +10,29 @@
   import { checkColors } from "./lib/color-checker.js";
   import { ntc } from "./lib/ntc.js";
 
+  // Parse URL Query Parameters
+  function applyColorsFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const fgColor = params.get("foregroundColor");
+    const bgColor = params.get("backgroundColor");
+
+    if (fgColor && chroma.valid(fgColor)) {
+      foregroundColor = fgColor;
+      // console.log("Foreground color from URL:", fgColor);
+    }
+    if (bgColor && chroma.valid(bgColor)) {
+      backgroundColor = bgColor;
+      // console.log("Background color from URL:", bgColor);
+    }
+  }
+
+  // Colours on refresh
+  let backgroundColor = "#EAC305";
+  let foregroundColor = "#000000";
+
+  // Apply colors from URL if available
+  applyColorsFromUrl();
+
   // Handle info box visibility
   let infoIsHidden = false;
 
@@ -40,21 +63,24 @@
     { Lc: 15, Size: "15", LineThickness: 15 },
   ];
 
-  // Random colours on refresh
-  let backgroundColor = "#EAC305";
-  let foregroundColor = "#000000";
+  // Update URL with query parameters
+  function updateUrlWithColors() {
+    const params = new URLSearchParams(window.location.search);
+    params.set("foregroundColor", foregroundColor);
+    params.set("backgroundColor", backgroundColor);
+    window.history.replaceState(
+      {},
+      "",
+      `${window.location.pathname}?${params.toString()}`
+    );
+  }
+
+  // Watch for changes in colors to update the URL
+  $: updateUrlWithColors();
 
   // Use Name That Colour to get the closest color name
   $: backgroundColorNames = ntc.name(backgroundColor);
   $: foregroundColorNames = ntc.name(foregroundColor);
-
- // Compute the text shadow value
- $: textShadowValue = `
-    -1px -1px 0 ${backgroundColor},
-    1px -1px 0 ${backgroundColor},
-    -1px 1px 0 ${backgroundColor},
-    1px 1px 0 ${backgroundColor}
-  `;
 
   // Function to capitalize the first letter
   const capitalizeFirstLetter = (str) =>
@@ -81,6 +107,7 @@
 
     await forceReRenderDots(); // Force re-render with new dots
     updateInputFields(); // Manually update input fields
+    updateUrlWithColors(); // Update the URL
   }
 
   async function swapColours() {
@@ -94,6 +121,7 @@
 
     await forceReRenderDots();
     updateInputFields(); // Manually update input fields
+    updateUrlWithColors(); // Update the URL
   }
 
   function updateInputFields() {
@@ -106,19 +134,20 @@
 
   // Foreground colour input fields
   function validateForegroundColor(value) {
-    console.log("Validating foreground color:", value);
+    // console.log("Validating foreground color:", value);
     try {
       const color = chroma(value).hex(); // Convert color name to hex
       if (chroma.valid(color)) {
         foregroundColor = color;
         foregroundIsValid = true;
         forceReRenderDots(); // Force re-render with new color
+        updateUrlWithColors(); // Update the URL
       } else {
         foregroundIsValid = false;
       }
     } catch (error) {
       foregroundIsValid = false;
-      console.error("Invalid foreground color:", value, error);
+      // console.error("Invalid foreground color:", value, error);
     }
     updateInputFields();
   }
@@ -141,6 +170,7 @@
         backgroundColor = color;
         backgroundIsValid = true;
         forceReRenderDots(); // Force re-render with new color
+        updateUrlWithColors(); // Update the URL
       } else {
         backgroundIsValid = false;
       }
@@ -258,10 +288,13 @@
   };
 
   onMount(() => {
+    applyColorsFromUrl();
+    updateInputFields();
+    forceReRenderDots();
+    checkScreenWidth();
+
     updateDimensions(); // Initial dimensions update
     dots = generateDots(); // Initial dots generation
-    updateInputFields();
-    checkScreenWidth();
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
@@ -286,7 +319,7 @@
   class:right-16={!infoIsHidden && smallScreen}
   class:bottom-16={!infoIsHidden}
   class:w-[88]={infoIsHidden}
-  class:h-[92]={infoIsHidden}
+  class:h-[88]={infoIsHidden}
   style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
 >
   <!-- Heading and close btn -->
@@ -368,13 +401,14 @@
             alt="Portrait of Jon Olav Eikenes, a white man with grey hair, glasses and short beard"
           />
           This tool is made by Jon Olav Eikenes, a Norwegian information designer
-          in the design system team at <a href="https://schibsted.com/">Schibsted Marketplaces</a>.
+          in the design system team at
+          <a href="https://schibsted.com/">Schibsted Marketplaces</a>.
         </p>
         <p>
           In Schibsted Marketplaces, we have used APCA for developing an
           accessible colour palette. For text contrast there are several APCA
           contrast checkers available, but we did not find one specifically for
-          visual elements. So we made our own. Feel free to reach out if you
+          visual elements. So we made our own. Feel free to <a href="https://www.linkedin.com/in/jonolave/">reach out</a> if you
           have feedback or questions!
         </p>
         <p>
@@ -401,6 +435,7 @@
   <!-- Input box -->
   <div
     class="whiteblurbox w-fit z-10 rounded-8 mx-16 md:mx-24 my-[140] p-24 md:p-40"
+    class:hidden={!infoIsHidden && smallScreen}
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">Choose colours</h2>
@@ -446,7 +481,7 @@
 
     <!-- Buttons -->
     <div class="flex flex-wrap gap-16">
-      <w-button variant="primary" on:click={newRandomColours}
+      <w-button full-width variant="primary" on:click={newRandomColours}
         >Random colours</w-button
       >
       <w-button full-width variant="secondary" on:click={swapColours}
@@ -458,6 +493,7 @@
   <!-- Result container -->
   <div
     class="whiteblurbox flex flex-col bleed justify-start rounded-8 max-w-[800] mx-16 md:mx-24 mt-40 mb-[600] p-24 md:p-40"
+    class:hidden={!infoIsHidden && smallScreen}
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">
@@ -502,11 +538,9 @@
     </div>
 
     <!-- Table -->
-    <table
-      class="table-auto my-32 w-full border-separate border-spacing-x-0 border-spacing-y-8"
-    >
+    <table class="table-auto s-bg rounded-8 mt-32 mb-8 w-full">
       <thead>
-        <tr class="s-bg">
+        <tr>
           <th class="text-right px-8 pt-16 pb-8">Size</th>
           <th class="text-right px-8 pt-16 pb-8">Lc required</th>
           <th class="px-8 pt-16 pb-8">APCA</th>
@@ -515,7 +549,7 @@
       </thead>
       <tbody>
         {#each contrastDemands as item (item.Lc)}
-          <tr class="s-bg">
+          <tr>
             <!-- Px size -->
             <td class="text-right px-8 py-16">{@html item.Size} px</td>
             <!-- LC demand -->
@@ -542,11 +576,21 @@
             </td>
           </tr>
         {/each}
+        <tr class="h-8">
+          <td colspan="4"></td>
+          <!-- Empty cells to create padding -->
+        </tr>
       </tbody>
     </table>
   </div>
-  <p class="t4 mb-32" style="color: {foregroundColor}; text-shadow: {textShadowValue};">
-    This might be the end of the page, but the universe goes on forever</p>
+  <p
+  class="t4 mb-32 p-8 text-center"
+  style="color: {foregroundColor}; background-color: {backgroundColor};"
+>
+  This might be the end of the page, but the universe goes on forever
+</p>
+
+
 </main>
 
 <!-- Container for SVG -->
@@ -661,8 +705,14 @@
   }
 
   tr {
+    border-bottom: 1px solid #000;
+    border-color: var(--w-s-color-border);
     padding-top: 12px;
     padding-bottom: 12px;
+  }
+
+  tbody tr:last-child, tr:nth-last-child(2) {
+    border-bottom: none;
   }
 
   svg {
