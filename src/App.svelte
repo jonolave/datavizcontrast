@@ -6,7 +6,7 @@
 
   import { APCAcontrast, sRGBtoY } from "apca-w3";
   import { colorParsley } from "colorparsley";
-  // import colorNamer from "color-namer";
+  // import colorNamer from "color-namer"; // no longer in use since names were not so good
   import { checkColors } from "./lib/color-checker.js";
   import { ntc } from "./lib/ntc.js";
 
@@ -21,7 +21,7 @@
   let smallScreen = false;
 
   function checkScreenWidth() {
-    smallScreen = window.innerWidth < 890;
+    smallScreen = window.innerWidth < 950;
     if (smallScreen) {
       console.log("Small screen detected");
     }
@@ -47,18 +47,21 @@
   // Use Name That Colour to get the closest color name
   $: backgroundColorNames = ntc.name(backgroundColor);
   $: foregroundColorNames = ntc.name(foregroundColor);
-  
+
+ // Compute the text shadow value
+ $: textShadowValue = `
+    -1px -1px 0 ${backgroundColor},
+    1px -1px 0 ${backgroundColor},
+    -1px 1px 0 ${backgroundColor},
+    1px 1px 0 ${backgroundColor}
+  `;
 
   // Function to capitalize the first letter
   const capitalizeFirstLetter = (str) =>
     str.charAt(0).toUpperCase() + str.slice(1);
 
-  $: backgroundColorName = capitalizeFirstLetter(
-    backgroundColorNames[1]
-  );
-  $: foregroundColorName = capitalizeFirstLetter(
-    foregroundColorNames[1]
-  );
+  $: backgroundColorName = capitalizeFirstLetter(backgroundColorNames[1]);
+  $: foregroundColorName = capitalizeFirstLetter(foregroundColorNames[1]);
 
   // let backgroundColor = chroma.random().hex().toUpperCase();
   // let foregroundColor =
@@ -71,6 +74,11 @@
     backgroundColor = chroma.random().hex().toUpperCase();
     foregroundColor =
       chroma.contrast(backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
+
+    // Reset validation states
+    foregroundIsValid = true;
+    backgroundIsValid = true;
+
     await forceReRenderDots(); // Force re-render with new dots
     updateInputFields(); // Manually update input fields
   }
@@ -79,6 +87,11 @@
     let previousBackground = backgroundColor;
     backgroundColor = foregroundColor;
     foregroundColor = previousBackground;
+
+    // Reset validation states
+    foregroundIsValid = true;
+    backgroundIsValid = true;
+
     await forceReRenderDots();
     updateInputFields(); // Manually update input fields
   }
@@ -278,7 +291,7 @@
 >
   <!-- Heading and close btn -->
   <div class="flex pr-8 justify-between">
-    <h1 class="merriweather-font text-xxxl s-text-inverted">
+    <h1 class="merriweather-font text-xxl md:text-xxxl s-text-inverted">
       {#if !infoIsHidden}
         The Dataviz Contrast Tool
       {/if}
@@ -312,8 +325,8 @@
       <div class="pt-24 space-y-12">
         <h2 class="merriweather-font text-l">About this tool</h2>
         <p>
-          Choose two colours to get the APCA lightness contrast, and see the minimum pixel size for shapes such as
-          lines and bars.
+          Choose two colours to get the APCA lightness contrast, and see the
+          minimum pixel size for shapes such as lines and bars.
         </p>
         <p>
           The circles in the background demonstrate the smallest possible px
@@ -349,8 +362,13 @@
       <div class="pt-24 space-y-12">
         <h2 class="merriweather-font text-l">Who made this?</h2>
         <p>
-          This tool is made by Jon Olav Eikenes, a Norwegian information
-          designer in the design system team at Schibsted Marketplaces.
+          <img
+            class="float-left h-80 mr-12 mb-12 rounded-full"
+            src="/jonolaveikenes.jpg"
+            alt="Portrait of Jon Olav Eikenes, a white man with grey hair, glasses and short beard"
+          />
+          This tool is made by Jon Olav Eikenes, a Norwegian information designer
+          in the design system team at <a href="https://schibsted.com/">Schibsted Marketplaces</a>.
         </p>
         <p>
           In Schibsted Marketplaces, we have used APCA for developing an
@@ -382,7 +400,7 @@
 >
   <!-- Input box -->
   <div
-    class="whiteblurbox w-fit z-10 rounded-8 mx-24 my-[140] p-40"
+    class="whiteblurbox w-fit z-10 rounded-8 mx-16 md:mx-24 my-[140] p-24 md:p-40"
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">Choose colours</h2>
@@ -439,7 +457,7 @@
 
   <!-- Result container -->
   <div
-    class="whiteblurbox flex flex-col bleed justify-start rounded-8 max-w-[800] mx-24 mt-40 mb-[600] p-40"
+    class="whiteblurbox flex flex-col bleed justify-start rounded-8 max-w-[800] mx-16 md:mx-24 mt-40 mb-[600] p-24 md:p-40"
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">
@@ -489,21 +507,21 @@
     >
       <thead>
         <tr class="s-bg">
-          <th class="text-right pt-16 pb-8">Size</th>
-          <th class="text-right pr-16 pt-16 pb-8">Lc required</th>
-          <th class="pr-16 pt-16 pb-8">APCA</th>
-          <th class="text-center px-16 pt-16 pb-8">Example</th>
+          <th class="text-right px-8 pt-16 pb-8">Size</th>
+          <th class="text-right px-8 pt-16 pb-8">Lc required</th>
+          <th class="px-8 pt-16 pb-8">APCA</th>
+          <th class="text-center px-8 pt-16 pb-8">Example</th>
         </tr>
       </thead>
       <tbody>
         {#each contrastDemands as item (item.Lc)}
           <tr class="s-bg">
             <!-- Px size -->
-            <td class="text-right -pr-16 py-16">{@html item.Size} px</td>
+            <td class="text-right px-8 py-16">{@html item.Size} px</td>
             <!-- LC demand -->
-            <td class="text-right pr-16">{item.Lc} Lc</td>
+            <td class="text-right px-8">{item.Lc} Lc</td>
             <!-- APCA -->
-            <td class="flex justify-center items-center pr-8 py-16">
+            <td class="flex justify-center items-center px-8 py-16">
               {#if Lc < item.Lc}
                 <img class="h-24" src="/red_cross.svg" alt="Red cross" />
               {:else}
@@ -512,7 +530,7 @@
             </td>
             <td>
               <div
-                class="cell px-16 py-16 mx-16 rounded-8"
+                class="cell px-8 py-16 mx-16 rounded-8"
                 style="background-color: {backgroundColor};"
               >
                 <!-- Line -->
@@ -527,6 +545,8 @@
       </tbody>
     </table>
   </div>
+  <p class="t4 mb-32" style="color: {foregroundColor}; text-shadow: {textShadowValue};">
+    This might be the end of the page, but the universe goes on forever</p>
 </main>
 
 <!-- Container for SVG -->
@@ -558,6 +578,11 @@
 
 <style>
   @import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400&display=swap");
+
+  :root {
+    --background-color: {backgroundColor};
+    --foreground-color: {foregroundColor};
+  }
 
   @keyframes grow {
     from {
@@ -661,9 +686,11 @@
     transition: color 0.3s; /* Smooth transition for hover effect */
   }
 
-  .icon-button:hover {
-    color: #eac305; /* Change color on hover */
-    background: #eac30522;
-    border: 2px solid #eac305;
+  @media (hover: hover) {
+    .icon-button:hover {
+      color: #eac305; /* Change color on hover */
+      background: #eac30522;
+      border: 2px solid #eac305;
+    }
   }
 </style>
