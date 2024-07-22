@@ -6,8 +6,26 @@
 
   import { APCAcontrast, sRGBtoY } from "apca-w3";
   import { colorParsley } from "colorparsley";
-  import colorNamer from "color-namer";
+  // import colorNamer from "color-namer";
   import { checkColors } from "./lib/color-checker.js";
+  import { ntc } from "./lib/ntc.js";
+
+  // Handle info box visibility
+  let infoIsHidden = false;
+
+  function toggleInfoVisibility() {
+    infoIsHidden = !infoIsHidden;
+  }
+
+  // Handle small screen
+  let smallScreen = false;
+
+  function checkScreenWidth() {
+    smallScreen = window.innerWidth < 890;
+    if (smallScreen) {
+      console.log("Small screen detected");
+    }
+  }
 
   let contrastDemands = [
     { Lc: 100, Size: "&lt; 1", LineThickness: 0.7 },
@@ -26,19 +44,20 @@
   let backgroundColor = "#EAC305";
   let foregroundColor = "#000000";
 
-  // Use color-namer to get the closest color name
-  $: backgroundColorNames = colorNamer(backgroundColor);
-  $: foregroundColorNames = colorNamer(foregroundColor);
+  // Use Name That Colour to get the closest color name
+  $: backgroundColorNames = ntc.name(backgroundColor);
+  $: foregroundColorNames = ntc.name(foregroundColor);
+  
 
   // Function to capitalize the first letter
   const capitalizeFirstLetter = (str) =>
     str.charAt(0).toUpperCase() + str.slice(1);
 
   $: backgroundColorName = capitalizeFirstLetter(
-    backgroundColorNames.basic[0].name
+    backgroundColorNames[1]
   );
   $: foregroundColorName = capitalizeFirstLetter(
-    foregroundColorNames.basic[0].name
+    foregroundColorNames[1]
   );
 
   // let backgroundColor = chroma.random().hex().toUpperCase();
@@ -184,7 +203,7 @@
   let redrawCounter = 0; // A counter to force redraw
   let dotSizes = [1, 1.5, 2, 3, 4, 6, 8, 10, 15, 20];
   let dotAreas = dotSizes.map((size) => Math.PI * Math.pow(size, 2));
-  let targetArea = (window.innerWidth * 400) / 150; // square px area to cover per dot size
+  let targetArea = (window.innerWidth * 400) / 200; // square px area to cover per dot size
   let dotsNeeded = dotAreas.map((area) => Math.ceil(targetArea / area));
 
   // Function to generate random positions for each dot, considering dotsNeeded
@@ -215,6 +234,7 @@
   $: if (svgWidth && svgHeight && redrawCounter) {
     targetArea = (svgWidth * svgHeight) / 150;
     dots = generateDots();
+    checkScreenWidth();
   }
 
   // Update svgWidth and svgHeight based on the actual dimensions of the SVG element
@@ -228,6 +248,7 @@
     updateDimensions(); // Initial dimensions update
     dots = generateDots(); // Initial dots generation
     updateInputFields();
+    checkScreenWidth();
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (let entry of entries) {
@@ -247,88 +268,117 @@
 
 <!-- Black info box -->
 <div
-  class="blackblurbox absolute top-16 left-16 bottom-16 z-30 w-[500] rounded-8 pl-40 pr-16 py-40 flex flex-col"
+  class="blackblurbox absolute top-16 left-16 z-30 rounded-8 pl-40 pr-16 py-40 flex flex-col"
+  class:w-[500]={!infoIsHidden && !smallScreen}
+  class:right-16={!infoIsHidden && smallScreen}
+  class:bottom-16={!infoIsHidden}
+  class:w-[88]={infoIsHidden}
+  class:h-[92]={infoIsHidden}
   style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
 >
-  <h1 class="merriweather-font text-xxxl s-text-inverted">
-    The Dataviz Contrast Tool
-  </h1>
+  <!-- Heading and close btn -->
+  <div class="flex pr-8 justify-between">
+    <h1 class="merriweather-font text-xxxl s-text-inverted">
+      {#if !infoIsHidden}
+        The Dataviz Contrast Tool
+      {/if}
+    </h1>
 
-  <!-- Scrollable info box content below headline -->
-  <div
-    class="space-y-24 divide-y custom-divider s-text-inverted overflow-y-auto flex-1 gradientmask pt-24 pr-24"
-  >
-    <p class="text-preamble">
-      Size matters. Small elements need higher contrast than large elements.
-    </p>
-
-    <div class="pt-24 space-y-12">
-      <h2 class="merriweather-font text-l">About this tool</h2>
-      <p>
-        Choose two colours to see the minimum pixel size for shapes such as
-        lines and bars, and the APCA lightness contrast.
-      </p>
-      <p>
-        The circles in the background demonstrate the smallest possible px
-        sizes.
-      </p>
-    </div>
-
-    <div class="pt-24 space-y-12">
-      <h2 class="merriweather-font text-l">What is APCA?</h2>
-      <p>
-        The Advanced Perceptual Contrast Algorithm <a
-          href="https://git.apcacontrast.com/documentation/APCAeasyIntro"
-          >(APCA)</a
-        >
-        is a method used to determine the readability of text and graphics. APCA
-        takes human perception into account and corrects some of the faults in the
-        current WCAG 2 contrast algorithm.
-      </p>
-      <p>
-        APCA measures lightness contrast as a value from Lc 0 (no contrast) to
-        Lc 106 (maximum contrast). The contrast requirements on this page are
-        extracted from
-        <a href="https://github.com/Myndex/SAPC-APCA/discussions/39"
-          >the Non-Text Minimums table (image)</a
-        > from Myndex, marked "Preliminary – Feb 2, 2022".
-      </p>
-      <p>
-        APCA might be included in WCAG 3, but is still in development and
-        subject to changes.
-      </p>
-    </div>
-
-    <div class="pt-24 space-y-12">
-      <h2 class="merriweather-font text-l">Who made this?</h2>
-      <p>
-        This tool is made by Jon Olav Eikenes, a Norwegian information designer
-        in the design system team at Schibsted Marketplaces.
-      </p>
-      <p>
-        In Schibsted Marketplaces, we have used APCA for developing an
-        accessible colour palette. For text contrast there are several APCA
-        contrast checkers available, but we did not find one specifically for
-        visual elements. So we made our own. Feel free to reach out if you have
-        feedback or questions!
-      </p>
-      <p>
-        This page was built using
-        <a href="https://www.npmjs.com/package/apca-w3">APCA-3</a>,
-        <a href="https://github.com/Myndex/colorparsley/">colorParsley</a>,
-        <a href="https://github.com/colorjs/color-namer">color-namer</a>,
-        <a href="https://www.npmjs.com/package/chroma-js">Chroma.js</a>,
-        <a href="https://svelte.dev/">Svelte</a>, and
-        <a href="https://warp-ds.github.io/tech-docs/">WARP</a>.
-      </p>
-      <p class="pt-64">.</p>
-    </div>
+    <!-- Close and open info panel button -->
+    <button
+      class="icon-button p-8 -mt-16 w-40 h-40 rounded flex items-center justify-center"
+      class:-ml-16={infoIsHidden}
+      on:click={toggleInfoVisibility}
+    >
+      <span class="material-icons">
+        {#if !infoIsHidden}
+          close
+        {:else}
+          question_mark
+        {/if}
+      </span>
+    </button>
   </div>
+
+  {#if !infoIsHidden}
+    <!-- Scrollable info box content below headline -->
+    <div
+      class="space-y-24 divide-y custom-divider s-text-inverted overflow-y-auto flex-1 gradientmask pt-24 pr-24"
+    >
+      <p class="text-preamble">
+        Size matters. Small elements need higher contrast than large elements.
+      </p>
+
+      <div class="pt-24 space-y-12">
+        <h2 class="merriweather-font text-l">About this tool</h2>
+        <p>
+          Choose two colours to get the APCA lightness contrast, and see the minimum pixel size for shapes such as
+          lines and bars.
+        </p>
+        <p>
+          The circles in the background demonstrate the smallest possible px
+          sizes.
+        </p>
+      </div>
+
+      <div class="pt-24 space-y-12">
+        <h2 class="merriweather-font text-l">What is APCA?</h2>
+        <p>
+          The Advanced Perceptual Contrast Algorithm <a
+            href="https://git.apcacontrast.com/documentation/APCAeasyIntro"
+            >(APCA)</a
+          >
+          is a method used to determine the readability of text and graphics. APCA
+          takes human perception into account and corrects some of the faults in
+          the current WCAG 2 contrast algorithm.
+        </p>
+        <p>
+          APCA measures lightness contrast as a value from Lc 0 (no contrast) to
+          Lc 106 (maximum contrast). The contrast requirements on this page are
+          extracted from
+          <a href="https://github.com/Myndex/SAPC-APCA/discussions/39"
+            >the Non-Text Minimums table (image)</a
+          > from Myndex, marked "Preliminary – Feb 2, 2022".
+        </p>
+        <p>
+          APCA might be included in WCAG 3, but is still in development and
+          subject to changes.
+        </p>
+      </div>
+
+      <div class="pt-24 space-y-12">
+        <h2 class="merriweather-font text-l">Who made this?</h2>
+        <p>
+          This tool is made by Jon Olav Eikenes, a Norwegian information
+          designer in the design system team at Schibsted Marketplaces.
+        </p>
+        <p>
+          In Schibsted Marketplaces, we have used APCA for developing an
+          accessible colour palette. For text contrast there are several APCA
+          contrast checkers available, but we did not find one specifically for
+          visual elements. So we made our own. Feel free to reach out if you
+          have feedback or questions!
+        </p>
+        <p>
+          This page was built using
+          <a href="https://www.npmjs.com/package/apca-w3">APCA-3</a>,
+          <a href="https://github.com/Myndex/colorparsley/">colorParsley</a>,
+          <a href="https://chir.ag/projects/ntc/">Name that Color</a>,
+          <a href="https://www.npmjs.com/package/chroma-js">Chroma.js</a>,
+          <a href="https://svelte.dev/">Svelte</a>, and
+          <a href="https://warp-ds.github.io/tech-docs/">WARP</a>.
+        </p>
+        <p class="pt-64">.</p>
+      </div>
+    </div>
+  {/if}
 </div>
 
 <!-- Container for main content -->
 <main
-  class="h-full relative flex flex-col justify-start items-center z-20 mt-30 pt-40 ml-[516] overflow-y-scroll"
+  class="h-full relative flex flex-col justify-start items-center z-20 mt-30 pt-40 overflow-y-scroll transition-all duration-500 ease-in-out"
+  class:ml-[516]={!infoIsHidden && !smallScreen}
+  class:ml-0={infoIsHidden || smallScreen}
 >
   <!-- Input box -->
   <div
@@ -396,21 +446,21 @@
       Contrast for {foregroundColorName} on {backgroundColorName}
     </h2>
 
-    <p>
+    <!-- <p>
       {foregroundColorName}
       {foregroundColor} on {backgroundColorName}
       {backgroundColor}
-    </p>
+    </p> -->
 
     <!-- Result in numbers, container for 3 boxes -->
     <div class="flex flex-wrap justify-center gap-x-16 gap-y-16 w-full mt-40">
       <!-- 1: Lc -->
-      <w-box bordered={true} class="min-w-[180]">
+      <w-box class="min-w-[180] s-bg rounded">
         <p>APCA contrast:</p>
         <span class="t1">{Lc} Lc</span>
       </w-box>
       <!-- 2: WCAG -->
-      <w-box bordered={true} class="min-w-[180]">
+      <w-box class="min-w-[180] s-bg rounded">
         <p>WCAG contrast:</p>
         {#if wcagContrast >= 3}
           <div class="flex gap-8">
@@ -425,7 +475,7 @@
         {/if}
       </w-box>
       <!-- 3: min size -->
-      <w-box bordered={true} class="min-w-[180]">
+      <w-box class="min-w-[180] s-bg rounded">
         <p>Minimum size:</p>
         {#if foregroundIsValid && backgroundIsValid}
           <span class="t1">{@html demand} px</span>
@@ -434,18 +484,20 @@
     </div>
 
     <!-- Table -->
-    <table class="table-auto my-32 w-full">
+    <table
+      class="table-auto my-32 w-full border-separate border-spacing-x-0 border-spacing-y-8"
+    >
       <thead>
-        <tr>
-          <th class="text-right">Size</th>
-          <th class="text-right pr-16">Lc required</th>
-          <th class="pr-16">APCA</th>
-          <th class="text-center px-16">Example</th>
+        <tr class="s-bg">
+          <th class="text-right pt-16 pb-8">Size</th>
+          <th class="text-right pr-16 pt-16 pb-8">Lc required</th>
+          <th class="pr-16 pt-16 pb-8">APCA</th>
+          <th class="text-center px-16 pt-16 pb-8">Example</th>
         </tr>
       </thead>
       <tbody>
         {#each contrastDemands as item (item.Lc)}
-          <tr>
+          <tr class="s-bg">
             <!-- Px size -->
             <td class="text-right -pr-16 py-16">{@html item.Size} px</td>
             <!-- LC demand -->
@@ -497,7 +549,7 @@
           {r}
           fill={foregroundColor}
           class="grow"
-          style="transform-origin: {cx}px {cy}px;"
+          style="transform-origin: {cx}px {cy}px; animation-duration: 0.2s; animation-timing-function: ease-out;"
         />
       {/if}
     {/each}
@@ -535,7 +587,9 @@
   }
 
   a {
-    color: #eac305; /* Set link color using a hex value */
+    color: #eac305;
+    text-decoration: underline;
+    text-decoration-style: dotted;
   }
 
   .cell {
@@ -561,6 +615,7 @@
   .blackblurbox {
     backdrop-filter: blur(8px);
     background-color: rgba(0, 0, 0, 0.85);
+    transition: all 0.5s ease;
   }
 
   .gradientmask {
@@ -581,15 +636,8 @@
   }
 
   tr {
-    border-bottom: 1px solid #000;
-    border-color: var(--w-s-color-border);
     padding-top: 12px;
     padding-bottom: 12px;
-  }
-
-  a {
-    text-decoration: underline;
-    text-decoration-style: dotted;
   }
 
   svg {
@@ -602,5 +650,20 @@
 
   .custom-divider > :not([hidden]) ~ :not([hidden]) {
     border-color: #5c5c66;
+  }
+
+  .icon-button {
+    font-size: 24px;
+    background: none;
+    border: 2px solid transparent;
+    cursor: pointer;
+    color: #fff;
+    transition: color 0.3s; /* Smooth transition for hover effect */
+  }
+
+  .icon-button:hover {
+    color: #eac305; /* Change color on hover */
+    background: #eac30522;
+    border: 2px solid #eac305;
   }
 </style>
