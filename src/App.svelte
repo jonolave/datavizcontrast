@@ -2,6 +2,7 @@
   import "@warp-ds/elements";
   import chroma from "chroma-js";
   import { onMount, onDestroy } from "svelte";
+  import { writable } from "svelte/store";
   import { tick } from "svelte";
 
   import { APCAcontrast, sRGBtoY } from "apca-w3";
@@ -34,20 +35,34 @@
   applyColorsFromUrl();
 
   // Handle info box visibility
-  let infoIsHidden = false;
-
-  function toggleInfoVisibility() {
-    infoIsHidden = !infoIsHidden;
-  }
-
+  const infoIsHidden = writable(false);
   // Handle small screen
-  let smallScreen = false;
+  const smallScreen = writable(false);
+
+  // Function to toggle info visibility
+  const toggleInfoVisibility = () => {
+    infoIsHidden.update((value) => !value);
+  };
+
+  // Handle scroll event
+  const menuVisible = writable(true);
+  let lastScrollY = 0;
+  let mainContainer;
+
+  // Handle scroll event
+  const handleScroll = () => {
+    if (mainContainer.scrollTop > lastScrollY) {
+      // Scrolling down
+      menuVisible.set(false);
+    } else {
+      // Scrolling up
+      menuVisible.set(true);
+    }
+    lastScrollY = mainContainer.scrollTop;
+  };
 
   function checkScreenWidth() {
-    smallScreen = window.innerWidth < 950;
-    if (smallScreen) {
-      console.log("Small screen detected");
-    }
+    smallScreen.set(window.innerWidth < 950);
   }
 
   let contrastDemands = [
@@ -291,7 +306,8 @@
     applyColorsFromUrl();
     updateInputFields();
     forceReRenderDots();
-    checkScreenWidth();
+    window.addEventListener("resize", checkScreenWidth);
+    checkScreenWidth(); // Initial check
 
     updateDimensions(); // Initial dimensions update
     dots = generateDots(); // Initial dots generation
@@ -304,9 +320,19 @@
       }
     });
 
+    // Add event listeners and observers
+    if (mainContainer) {
+      mainContainer.addEventListener("scroll", handleScroll);
+    }
+
     resizeObserver.observe(svgElement);
 
+    // Clean up the event listeners and observers if the component is destroyed
     return () => {
+      window.removeEventListener("resize", checkScreenWidth);
+      if (mainContainer) {
+        mainContainer.removeEventListener("scroll", handleScroll);
+      }
       resizeObserver.disconnect();
     };
   });
@@ -315,17 +341,18 @@
 <!-- Black info box -->
 <div
   class="blackblurbox absolute top-16 left-16 z-30 rounded-8 pl-40 pr-16 py-40 flex flex-col"
-  class:w-[500]={!infoIsHidden && !smallScreen}
-  class:right-16={!infoIsHidden && smallScreen}
-  class:bottom-16={!infoIsHidden}
-  class:w-[88]={infoIsHidden}
-  class:h-[88]={infoIsHidden}
+  class:w-[500]={!$infoIsHidden && !$smallScreen}
+  class:right-16={!$infoIsHidden && $smallScreen}
+  class:bottom-16={!$infoIsHidden}
+  class:w-[88]={$infoIsHidden}
+  class:h-[88]={$infoIsHidden}
+  class:hidden-menu={!$menuVisible && $infoIsHidden && $smallScreen}
   style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
 >
   <!-- Heading and close btn -->
   <div class="flex pr-8 justify-between">
     <h1 class="merriweather-font text-xxl md:text-xxxl s-text-inverted">
-      {#if !infoIsHidden}
+      {#if !$infoIsHidden}
         The Dataviz Contrast Tool
       {/if}
     </h1>
@@ -333,11 +360,11 @@
     <!-- Close and open info panel button -->
     <button
       class="icon-button p-8 -mt-16 w-40 h-40 rounded flex items-center justify-center"
-      class:-ml-16={infoIsHidden}
+      class:-ml-16={$infoIsHidden}
       on:click={toggleInfoVisibility}
     >
       <span class="material-icons">
-        {#if !infoIsHidden}
+        {#if !$infoIsHidden}
           close
         {:else}
           question_mark
@@ -346,7 +373,7 @@
     </button>
   </div>
 
-  {#if !infoIsHidden}
+  {#if !$infoIsHidden}
     <!-- Scrollable info box content below headline -->
     <div
       class="space-y-24 divide-y custom-divider s-text-inverted overflow-y-auto flex-1 gradientmask pt-24 pr-24"
@@ -408,8 +435,9 @@
           In Schibsted Marketplaces, we have used APCA for developing an
           accessible colour palette. For text contrast there are several APCA
           contrast checkers available, but we did not find one specifically for
-          visual elements. So we made our own. Feel free to <a href="https://www.linkedin.com/in/jonolave/">reach out</a> if you
-          have feedback or questions!
+          visual elements. So we made our own. Feel free to <a
+            href="https://www.linkedin.com/in/jonolave/">reach out</a
+          > if you have feedback or questions!
         </p>
         <p>
           This page was built using
@@ -420,7 +448,7 @@
           <a href="https://svelte.dev/">Svelte</a>, and
           <a href="https://warp-ds.github.io/tech-docs/">WARP</a>.
         </p>
-        <p class="pt-64">.</p>
+        <p class="h-64"></p>
       </div>
     </div>
   {/if}
@@ -428,14 +456,15 @@
 
 <!-- Container for main content -->
 <main
+  bind:this={mainContainer}
   class="h-full relative flex flex-col justify-start items-center z-20 mt-30 pt-40 overflow-y-scroll transition-all duration-500 ease-in-out"
-  class:ml-[516]={!infoIsHidden && !smallScreen}
-  class:ml-0={infoIsHidden || smallScreen}
+  class:ml-[516]={!$infoIsHidden && !$smallScreen}
+  class:ml-0={$infoIsHidden || $smallScreen}
 >
   <!-- Input box -->
   <div
     class="whiteblurbox w-fit z-10 rounded-8 mx-16 md:mx-24 my-[140] p-24 md:p-40"
-    class:hidden={!infoIsHidden && smallScreen}
+    class:hidden={!$infoIsHidden && $smallScreen}
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">Choose colours</h2>
@@ -493,7 +522,7 @@
   <!-- Result container -->
   <div
     class="whiteblurbox flex flex-col bleed justify-start rounded-8 max-w-[800] mx-16 md:mx-24 mt-40 mb-[600] p-24 md:p-40"
-    class:hidden={!infoIsHidden && smallScreen}
+    class:hidden={!$infoIsHidden && $smallScreen}
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">
@@ -507,33 +536,33 @@
     </p> -->
 
     <!-- Result in numbers, container for 3 boxes -->
-    <div class="flex flex-wrap justify-center gap-x-16 gap-y-16 w-full mt-40">
+    <div class="flex flex-wrap justify-between center gap-x-16 gap-y-16 w-full mt-40">
       <!-- 1: Lc -->
-      <w-box class="min-w-[180] s-bg rounded">
+      <w-box class="flex-1 min-w-[180px] s-bg rounded">
         <p>APCA contrast:</p>
         <span class="t1">{Lc} Lc</span>
       </w-box>
-      <!-- 2: WCAG -->
-      <w-box class="min-w-[180] s-bg rounded">
-        <p>WCAG contrast:</p>
-        {#if wcagContrast >= 3}
-          <div class="flex gap-8">
-            <span class="t1">{wcagContrast} : 1</span>
-            <img class="h-24 mt-8" src="/green_check.svg" alt="Green check" />
-          </div>
-        {:else}
-          <div class="flex gap-8">
-            <span class="t1">{wcagContrast} : 1</span>
-            <img class="h-24 mt-8" src="/red_cross.svg" alt="Red cross" />
-          </div>
-        {/if}
-      </w-box>
-      <!-- 3: min size -->
-      <w-box class="min-w-[180] s-bg rounded">
+      <!-- 2: min size -->
+      <w-box class="flex-1 min-w-[180px] s-bg rounded">
         <p>Minimum size:</p>
         {#if foregroundIsValid && backgroundIsValid}
           <span class="t1">{@html demand} px</span>
         {:else}{/if}
+      </w-box>
+      <!-- 3: WCAG -->
+      <w-box class="flex-1 min-w-[180px] s-bg rounded">
+        <p>WCAG contrast:</p>
+        {#if wcagContrast >= 3}
+          <div class="flex gap-8">
+            <img class="h-24 mt-8" src="/green_check.svg" alt="Green check" />
+            <span class="t1">{wcagContrast} : 1</span>
+          </div>
+        {:else}
+          <div class="flex gap-8">
+            <img class="h-24 mt-8" src="/red_cross.svg" alt="Red cross" />
+            <span class="t1">{wcagContrast} : 1</span>
+          </div>
+        {/if}
       </w-box>
     </div>
 
@@ -583,14 +612,13 @@
       </tbody>
     </table>
   </div>
+  <!-- End of page -->
   <p
-  class="t4 mb-32 p-8 text-center"
-  style="color: {foregroundColor}; background-color: {backgroundColor};"
->
-  This might be the end of the page, but the universe goes on forever
-</p>
-
-
+    class="t4 m-32 p-8 text-center"
+    style="color: {foregroundColor}; background-color: {backgroundColor};"
+  >
+    This might be the end of the page, but the universe goes on forever
+  </p>
 </main>
 
 <!-- Container for SVG -->
@@ -735,6 +763,12 @@
     color: #fff;
     transition: color 0.3s; /* Smooth transition for hover effect */
   }
+
+  .hidden-menu {
+        opacity: 0;
+        transform: translateY(-100%);
+        transition: opacity 0.5s ease, transform 0.5s ease;
+    }
 
   @media (hover: hover) {
     .icon-button:hover {
