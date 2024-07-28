@@ -51,7 +51,10 @@
 
   // Handle scroll event
   const handleScroll = () => {
-    if (mainContainer.scrollTop > lastScrollY) {
+    if (mainContainer.scrollTop < 50) {
+      // Always show menu if scroll position is within the first 50px
+      menuVisible.set(true);
+    } else if (mainContainer.scrollTop > lastScrollY) {
       // Scrolling down
       menuVisible.set(false);
     } else {
@@ -536,7 +539,9 @@
     </p> -->
 
     <!-- Result in numbers, container for 3 boxes -->
-    <div class="flex flex-wrap justify-between center gap-x-16 gap-y-16 w-full mt-40">
+    <div
+      class="flex flex-wrap justify-between center gap-x-16 gap-y-16 w-full mt-40"
+    >
       <!-- 1: Lc -->
       <w-box class="flex-1 min-w-[180px] s-bg rounded">
         <p>APCA contrast:</p>
@@ -622,27 +627,21 @@
 </main>
 
 <!-- Container for SVG -->
-<div class="fixed top-0 left-0 w-full h-full z-10">
+<div
+  class="fixed top-0 left-0 w-full h-full z-10"
+  style="background-color: {backgroundColor};"
+>
   <!-- SVG with dots -->
   <svg
     id={"svg" + redrawCounter}
     bind:this={svgElement}
     width="100%"
     height="100%"
+    class="fade-in"
   >
-    <rect width="100%" height="100%" fill={backgroundColor}></rect>
-
     {#each dots as { cx, cy, r, id }, index}
       {#if demand === "&lt; 1" || r >= parseFloat(demand)}
-        <circle
-          {id}
-          {cx}
-          {cy}
-          {r}
-          fill={foregroundColor}
-          class="grow"
-          style="transform-origin: {cx}px {cy}px; animation-duration: 0.2s; animation-timing-function: ease-out;"
-        />
+        <circle {id} {cx} {cy} {r} fill={foregroundColor} class="fade-in" />
       {/if}
     {/each}
   </svg>
@@ -656,18 +655,18 @@
     --foreground-color: {foregroundColor};
   }
 
-  @keyframes grow {
-    from {
-      transform: scale(0);
-    }
-    to {
-      transform: scale(1);
-    }
+  @keyframes fadeIn {
+  from {
+    opacity: 0;
   }
+  to {
+    opacity: 1;
+  }
+}
 
-  .grow {
-    animation: grow 1s forwards; /* Adjust the duration as needed */
-  }
+.fade-in {
+  animation: fadeIn 0.5s ease-in-out forwards;
+}
 
   .merriweather-font {
     font-family: "Merriweather", serif;
