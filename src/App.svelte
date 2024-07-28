@@ -30,6 +30,8 @@
   // Colours on refresh
   let backgroundColor = "#EAC305";
   let foregroundColor = "#000000";
+  let svgKey = 0;
+  let showSvg = true;
 
   // Apply colors from URL if available
   applyColorsFromUrl();
@@ -38,6 +40,15 @@
   const infoIsHidden = writable(false);
   // Handle small screen
   const smallScreen = writable(false);
+
+  // Debounce function
+  function debounce(func, wait) {
+    let timeout;
+    return function (...args) {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => func.apply(this, args), wait);
+    };
+  }
 
   // Function to toggle info visibility
   const toggleInfoVisibility = () => {
@@ -50,7 +61,7 @@
   let mainContainer;
 
   // Handle scroll event
-  const handleScroll = () => {
+  const handleScroll = debounce(() => {
     if (mainContainer.scrollTop < 50) {
       // Always show menu if scroll position is within the first 50px
       menuVisible.set(true);
@@ -62,6 +73,14 @@
       menuVisible.set(true);
     }
     lastScrollY = mainContainer.scrollTop;
+  }, 100);
+
+  // Force re-render of the SVG by updating the key
+  const forceReRenderSvg = async () => {
+    showSvg = false; // Hide SVG
+    await tick(); // Wait for the DOM to update
+    showSvg = true; // Show SVG
+    await tick(); // Wait for the DOM to update
   };
 
   function checkScreenWidth() {
@@ -261,7 +280,6 @@
   let svgHeight;
 
   let dots = []; // Initialize an empty array for dots
-  let redrawCounter = 0; // A counter to force redraw
   let dotSizes = [1, 1.5, 2, 3, 4, 6, 8, 10, 15, 20];
   let dotAreas = dotSizes.map((size) => Math.PI * Math.pow(size, 2));
   let targetArea = (window.innerWidth * 400) / 200; // square px area to cover per dot size
@@ -269,15 +287,15 @@
 
   // Function to generate random positions for each dot, considering dotsNeeded
   const generateDots = () => {
+    if (!svgElement) return []; // Ensure svgElement is available
+
     let newDots = [];
-    redrawCounter++;
     dotSizes.forEach((size, index) => {
       for (let i = 0; i < dotsNeeded[index]; i++) {
         newDots.push({
           cx: Math.random() * svgWidth,
           cy: Math.random() * svgElement.clientHeight, // Fixed height of 400px
           r: size, // Example radius calculation
-          id: `dot-${redrawCounter}-${i}-${size}`,
         });
       }
     });
@@ -289,10 +307,11 @@
     dots = []; // Clear the dots array
     await tick(); // Wait for the next DOM update cycle
     dots = generateDots(); // Set dots to the newly generated dots
+    await forceReRenderSvg(); // Re-render SVG to trigger animation
   };
 
   // Reactive statement to update dots when svgWidth changes
-  $: if (svgWidth && svgHeight && redrawCounter) {
+  $: if (svgWidth && svgHeight) {
     targetArea = (svgWidth * svgHeight) / 150;
     dots = generateDots();
     checkScreenWidth();
@@ -300,8 +319,10 @@
 
   // Update svgWidth and svgHeight based on the actual dimensions of the SVG element
   const updateDimensions = () => {
-    svgWidth = svgElement.clientWidth;
-    svgHeight = svgElement.clientHeight;
+    if (svgElement) {
+      svgWidth = svgElement.clientWidth;
+      svgHeight = svgElement.clientHeight;
+    }
     // console.log('SVG Dimensions:', svgWidth, 'x', svgHeight);
   };
 
@@ -309,7 +330,10 @@
     applyColorsFromUrl();
     updateInputFields();
     forceReRenderDots();
-    window.addEventListener("resize", checkScreenWidth);
+    window.addEventListener("resize", () => {
+      updateDimensions();
+      forceReRenderDots();
+    });
     checkScreenWidth(); // Initial check
 
     updateDimensions(); // Initial dimensions update
@@ -319,24 +343,35 @@
       for (let entry of entries) {
         if (entry.target === svgElement) {
           updateDimensions(); // Update dimensions based on the observed changes
+          forceReRenderDots();
         }
       }
     });
+
+    if (svgElement) {
+      resizeObserver.observe(svgElement);
+    }
 
     // Add event listeners and observers
     if (mainContainer) {
       mainContainer.addEventListener("scroll", handleScroll);
     }
 
-    resizeObserver.observe(svgElement);
+    // Initial check and re-render
+    // forceReRenderSvg();
 
     // Clean up the event listeners and observers if the component is destroyed
     return () => {
-      window.removeEventListener("resize", checkScreenWidth);
+      window.removeEventListener("resize", () => {
+        updateDimensions();
+        forceReRenderDots();
+      });
       if (mainContainer) {
         mainContainer.removeEventListener("scroll", handleScroll);
       }
-      resizeObserver.disconnect();
+      if (resizeObserver && svgElement) {
+        resizeObserver.unobserve(svgElement);
+      }
     };
   });
 </script>
@@ -631,20 +666,24 @@
   class="fixed top-0 left-0 w-full h-full z-10"
   style="background-color: {backgroundColor};"
 >
-  <!-- SVG with dots -->
-  <svg
-    id={"svg" + redrawCounter}
-    bind:this={svgElement}
-    width="100%"
-    height="100%"
-    class="fade-in"
-  >
-    {#each dots as { cx, cy, r, id }, index}
-      {#if demand === "&lt; 1" || r >= parseFloat(demand)}
-        <circle {id} {cx} {cy} {r} fill={foregroundColor} class="fade-in" />
-      {/if}
-    {/each}
-  </svg>
+  {#if showSvg}
+    {#key svgKey}
+      <!-- SVG with dots -->
+      <svg
+        id={"svg" + svgKey}
+        bind:this={svgElement}
+        width="100%"
+        height="100%"
+        class="fade-in"
+      >
+        {#each dots as { cx, cy, r, id }, index}
+          {#if demand === "&lt; 1" || r >= parseFloat(demand)}
+            <circle {id} {cx} {cy} {r} fill={foregroundColor} />
+          {/if}
+        {/each}
+      </svg>
+    {/key}
+  {/if}
 </div>
 
 <style>
@@ -665,7 +704,8 @@
 }
 
 .fade-in {
-  animation: fadeIn 0.5s ease-in-out forwards;
+  animation: fadeIn 0.3s ease-in-out forwards;
+  will-change: opacity;
 }
 
   .merriweather-font {
