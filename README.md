@@ -2,10 +2,6 @@
 
 Web site at https://datavizcontrast.com/
 
-## Live web page
-The project is built to the `/dist` folder, put in the `gh-pages` branch, which is published to Github pages. 
-This happens automatically through Github Actions.
-
 ## To run locally
 Install:
 `npm install`
