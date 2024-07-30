@@ -41,15 +41,6 @@
   // Handle small screen
   const smallScreen = writable(false);
 
-  // Debounce function
-  function debounce(func, wait) {
-    let timeout;
-    return function (...args) {
-      clearTimeout(timeout);
-      timeout = setTimeout(() => func.apply(this, args), wait);
-    };
-  }
-
   // Function to toggle info visibility
   const toggleInfoVisibility = () => {
     infoIsHidden.update((value) => !value);
@@ -61,19 +52,19 @@
   let mainContainer;
 
   // Handle scroll event
-  const handleScroll = debounce(() => {
-    if (mainContainer.scrollTop < 50) {
-      // Always show menu if scroll position is within the first 50px
-      menuVisible.set(true);
-    } else if (mainContainer.scrollTop > lastScrollY) {
-      // Scrolling down
-      menuVisible.set(false);
-    } else {
-      // Scrolling up
-      menuVisible.set(true);
-    }
-    lastScrollY = mainContainer.scrollTop;
-  }, 100);
+  const handleScroll = () => {
+  if (mainContainer.scrollTop < 30) {
+    // Always show menu if scroll position is within the first 30px
+    menuVisible.set(true);
+  } else if (mainContainer.scrollTop > lastScrollY) {
+    // Scrolling down
+    menuVisible.set(false);
+  } else {
+    // Scrolling up
+    menuVisible.set(true);
+  }
+  lastScrollY = mainContainer.scrollTop;
+};
 
   // Force re-render of the SVG by updating the key
   const forceReRenderSvg = async () => {
