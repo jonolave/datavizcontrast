@@ -4,6 +4,7 @@
   import { onMount, onDestroy } from "svelte";
   import { writable } from "svelte/store";
   import { tick } from "svelte";
+  import ColorPicker, { ChromeVariant } from "svelte-awesome-color-picker";
 
   import { APCAcontrast, sRGBtoY } from "apca-w3";
   import { colorParsley } from "colorparsley";
@@ -18,18 +19,16 @@
     const bgColor = params.get("backgroundColor");
 
     if (fgColor && chroma.valid(fgColor)) {
-      foregroundColor = fgColor;
-      // console.log("Foreground color from URL:", fgColor);
+      foregroundColor.set(fgColor);
     }
     if (bgColor && chroma.valid(bgColor)) {
-      backgroundColor = bgColor;
-      // console.log("Background color from URL:", bgColor);
+      backgroundColor.set(bgColor);
     }
   }
 
   // Colours on refresh
-  let backgroundColor = "#EAC305";
-  let foregroundColor = "#000000";
+  let backgroundColor = writable("#EAC305");
+  let foregroundColor = writable("#000000");
   let svgKey = 0;
   let showSvg = true;
 
@@ -53,18 +52,18 @@
 
   // Handle scroll event
   const handleScroll = () => {
-  if (mainContainer.scrollTop < 30) {
-    // Always show menu if scroll position is within the first 30px
-    menuVisible.set(true);
-  } else if (mainContainer.scrollTop > lastScrollY) {
-    // Scrolling down
-    menuVisible.set(false);
-  } else {
-    // Scrolling up
-    menuVisible.set(true);
-  }
-  lastScrollY = mainContainer.scrollTop;
-};
+    if (mainContainer.scrollTop < 30) {
+      // Always show menu if scroll position is within the first 30px
+      menuVisible.set(true);
+    } else if (mainContainer.scrollTop > lastScrollY) {
+      // Scrolling down
+      menuVisible.set(false);
+    } else {
+      // Scrolling up
+      menuVisible.set(true);
+    }
+    lastScrollY = mainContainer.scrollTop;
+  };
 
   // Force re-render of the SVG by updating the key
   const forceReRenderSvg = async () => {
@@ -91,11 +90,14 @@
     { Lc: 15, Size: "15", LineThickness: 15 },
   ];
 
+  // Watch for changes in colors to update the URL
+  // $: updateUrlWithColors();
+
   // Update URL with query parameters
   function updateUrlWithColors() {
     const params = new URLSearchParams(window.location.search);
-    params.set("foregroundColor", foregroundColor);
-    params.set("backgroundColor", backgroundColor);
+    params.set("foregroundColor", $foregroundColor);
+    params.set("backgroundColor", $backgroundColor);
     window.history.replaceState(
       {},
       "",
@@ -103,12 +105,9 @@
     );
   }
 
-  // Watch for changes in colors to update the URL
-  $: updateUrlWithColors();
-
   // Use Name That Colour to get the closest color name
-  $: backgroundColorNames = ntc.name(backgroundColor);
-  $: foregroundColorNames = ntc.name(foregroundColor);
+  $: backgroundColorNames = ntc.name($backgroundColor);
+  $: foregroundColorNames = ntc.name($foregroundColor);
 
   // Function to capitalize the first letter
   const capitalizeFirstLetter = (str) =>
@@ -118,16 +117,12 @@
   $: foregroundColorName = capitalizeFirstLetter(foregroundColorNames[1]);
 
   // let backgroundColor = chroma.random().hex().toUpperCase();
-  // let foregroundColor =
-  chroma.contrast(backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
-
-  // Colour for drop shadow based on background colour
-  $: darkerBackgroundColor = chroma(backgroundColor).darken(2).alpha(0.3).css();
+  // let foregroundColor = chroma.contrast($backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
 
   async function newRandomColours() {
-    backgroundColor = chroma.random().hex().toUpperCase();
-    foregroundColor =
-      chroma.contrast(backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
+    $backgroundColor = chroma.random().hex().toUpperCase();
+    $foregroundColor =
+      chroma.contrast($backgroundColor, "white") > 4.5 ? "#FFFFFF" : "#000000";
 
     // Reset validation states
     foregroundIsValid = true;
@@ -135,13 +130,14 @@
 
     await forceReRenderDots(); // Force re-render with new dots
     updateInputFields(); // Manually update input fields
-    updateUrlWithColors(); // Update the URL
+    // updateUrlWithColors(); // Update the URL
   }
 
   async function swapColours() {
-    let previousBackground = backgroundColor;
-    backgroundColor = foregroundColor;
-    foregroundColor = previousBackground;
+    let previousBackground = $backgroundColor;
+    let previousForeground = $foregroundColor;
+    $backgroundColor = previousForeground;
+    $foregroundColor = previousBackground;
 
     // Reset validation states
     foregroundIsValid = true;
@@ -149,35 +145,62 @@
 
     await forceReRenderDots();
     updateInputFields(); // Manually update input fields
-    updateUrlWithColors(); // Update the URL
+    // updateUrlWithColors(); // Update the URL
+  }
+
+  // Functions to handle input events for foreground color
+  function updateForegroundColor(event) {
+    validateForegroundColor(event.target.value);
+  }
+
+  function updateForegroundColorOnEnter(event) {
+    if (event.key === "Enter") {
+      validateForegroundColor(event.target.value);
+    }
+  }
+
+  // Functions to handle input events for background color
+  function updateBackgroundColor(event) {
+    validateBackgroundColor(event.target.value);
+  }
+
+  function updateBackgroundColorOnEnter(event) {
+    if (event.key === "Enter") {
+      validateBackgroundColor(event.target.value);
+    }
   }
 
   function updateInputFields() {
-    document.querySelector("#foregroundColor").value = foregroundColor;
-    document.querySelector("#backgroundColor").value = backgroundColor;
+    document.querySelector("#foregroundColor").value = $foregroundColor;
+    document.querySelector("#backgroundColor").value = $backgroundColor;
   }
 
   let backgroundIsValid = true;
   let foregroundIsValid = true;
+  let darkerBackgroundColor;
+
+  $: if (backgroundIsValid) {
+    darkerBackgroundColor = chroma($backgroundColor).darken(2).alpha(0.3).css();
+  }
 
   // Foreground colour input fields
+  // Function to validate and set the foreground color
   function validateForegroundColor(value) {
-    // console.log("Validating foreground color:", value);
+    console.log("Validating foreground color", value);
     try {
       const color = chroma(value).hex(); // Convert color name to hex
       if (chroma.valid(color)) {
-        foregroundColor = color;
+        foregroundColor.set(color);
         foregroundIsValid = true;
         forceReRenderDots(); // Force re-render with new color
-        updateUrlWithColors(); // Update the URL
+        // updateUrlWithColors(); // Update the URL
       } else {
         foregroundIsValid = false;
       }
     } catch (error) {
       foregroundIsValid = false;
-      // console.error("Invalid foreground color:", value, error);
     }
-    updateInputFields();
+    // updateInputFields();
   }
 
   function handleForegroundBlur(event) {
@@ -192,21 +215,21 @@
 
   // Background colour input fields
   function validateBackgroundColor(value) {
+    console.log("Validating background color", value);
     try {
       const color = chroma(value).hex(); // Convert color name to hex
       if (chroma.valid(color)) {
-        backgroundColor = color;
+        backgroundColor.set(color);
         backgroundIsValid = true;
         forceReRenderDots(); // Force re-render with new color
-        updateUrlWithColors(); // Update the URL
+        // updateUrlWithColors(); // Update the URL
       } else {
         backgroundIsValid = false;
       }
     } catch (error) {
       backgroundIsValid = false;
-      console.error("Invalid background color:", value, error);
     }
-    updateInputFields();
+    // updateInputFields();
   }
 
   function handleBackgroundBlur(event) {
@@ -224,9 +247,9 @@
 
   // WCAG contrast, check only if valid colours
   $: if (foregroundIsValid && backgroundIsValid) {
-    wcagContrast = checkColors(foregroundColor, backgroundColor).contrast;
+    wcagContrast = checkColors($foregroundColor, $backgroundColor).contrast;
   } else {
-    wcagContrast = 0; // or another default value indicating invalid contrast
+    wcagContrast = 0;
   }
 
   // APCA contrast, check only if valid colours
@@ -235,8 +258,8 @@
     Lc = Math.round(
       Math.abs(
         APCAcontrast(
-          sRGBtoY(colorParsley(foregroundColor)),
-          sRGBtoY(colorParsley(backgroundColor))
+          sRGBtoY(colorParsley($foregroundColor)),
+          sRGBtoY(colorParsley($backgroundColor))
         )
       )
     );
@@ -256,12 +279,12 @@
   // New input fields
 
   function handleForegroundInput(event) {
-    const value = event.target.value;
+    const value = event.detail.hex || event.target.value;
     validateForegroundColor(value);
   }
 
   function handleBackgroundInput(event) {
-    const value = event.target.value;
+    const value = event.detail.hex || event.target.value;
     validateBackgroundColor(value);
   }
 
@@ -347,6 +370,9 @@
     if (mainContainer) {
       mainContainer.addEventListener("scroll", handleScroll);
     }
+
+    // Initial call to updateInputFields after mounting
+    updateInputFields();
 
     // Initial check and re-render
     // forceReRenderSvg();
@@ -474,7 +500,10 @@
           <a href="https://github.com/Myndex/colorparsley/">colorParsley</a>,
           <a href="https://chir.ag/projects/ntc/">Name that Color</a>,
           <a href="https://www.npmjs.com/package/chroma-js">Chroma.js</a>,
-          <a href="https://svelte.dev/">Svelte</a>, and
+          <a href="https://svelte.dev/">Svelte</a>,
+          <a href="https://svelte-awesome-color-picker.vercel.app/"
+            >Svelte awesome color picker</a
+          >, and
           <a href="https://warp-ds.github.io/tech-docs/">WARP</a>.
         </p>
         <p class="h-64"></p>
@@ -497,7 +526,7 @@
     style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
   >
     <h2 class="merriweather-font text-xl">Choose colours</h2>
-    <p>Enter colour name or HEX code</p>
+    <p>Use the colour picker, enter colour name or HEX code</p>
     <!-- Input fields -->
     <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24">
       <!-- Input foreground -->
@@ -505,14 +534,26 @@
         <label class="font-bold text-caption" for="foregroundColor"
           >Foreground colour</label
         >
-        <input
-          type="text"
-          id="foregroundColor"
-          class="mt-4 px-8 py-12 rounded border s-border hover:s-border-hover"
-          on:blur={handleForegroundBlur}
-          on:keydown={handleForegroundKeydown}
-          on:input={foregroundColor}
-        />
+        <div class="s-bg mt-4 px-6 py-6 flex items-center rounded gap-4">
+          <ColorPicker
+            on:input={handleForegroundInput}
+            bind:hex={$foregroundColor}
+            label=""
+            isAlpha={false}
+            sliderDirection="horizontal"
+            components={ChromeVariant}
+            --input-size="34px"
+          />
+          <input
+            type="text"
+            id="foregroundColor"
+            class="px-8 py-12 rounded border s-border hover:s-border-hover"
+            on:blur={updateForegroundColor}
+            on:keydown={updateForegroundColorOnEnter}
+            on:input={handleForegroundInput}
+            bind:value={$foregroundColor}
+          />
+        </div>
         {#if !foregroundIsValid}
           <p class="error-text">Not a valid colour</p>
         {/if}
@@ -523,14 +564,26 @@
         <label class="font-bold text-caption" for="backgroundColor"
           >Background colour</label
         >
-        <input
-          type="text"
-          id="backgroundColor"
-          class="mt-4 px-8 py-12 rounded border s-border hover:s-border-hover"
-          on:blur={handleBackgroundBlur}
-          on:keydown={handleBackgroundKeydown}
-          on:input={backgroundColor}
-        />
+        <div class="s-bg mt-4 px-6 py-6 flex items-center rounded gap-4">
+          <ColorPicker
+            on:input={handleBackgroundInput}
+            bind:hex={$backgroundColor}
+            label=""
+            isAlpha={false}
+            components={ChromeVariant}
+            sliderDirection="horizontal"
+            --input-size="34px"
+          />
+          <input
+            type="text"
+            id="backgroundColor"
+            class="px-8 py-12 rounded border s-border hover:s-border-hover"
+            on:blur={updateBackgroundColor}
+            on:keydown={updateBackgroundColorOnEnter}
+            on:input={handleBackgroundInput}
+            bind:value={$backgroundColor}
+          />
+        </div>
         {#if !backgroundIsValid}
           <p class="error-text">Not a valid colour</p>
         {/if}
@@ -625,12 +678,12 @@
             <td>
               <div
                 class="cell px-8 py-16 mx-16 rounded-8"
-                style="background-color: {backgroundColor};"
+                style="background-color: {$backgroundColor};"
               >
                 <!-- Line -->
                 <div
                   class="cell::before"
-                  style="border-top-width: {item.LineThickness}px; border-top-color: {foregroundColor};"
+                  style="border-top-width: {item.LineThickness}px; border-top-color: {$foregroundColor};"
                 ></div>
               </div>
             </td>
@@ -646,7 +699,7 @@
   <!-- End of page -->
   <p
     class="t4 m-32 p-8 text-center"
-    style="color: {foregroundColor}; background-color: {backgroundColor};"
+    style="color: {$foregroundColor}; background-color: {$backgroundColor};"
   >
     This might be the end of the page, but the universe goes on forever
   </p>
@@ -655,7 +708,7 @@
 <!-- Container for SVG -->
 <div
   class="fixed top-0 left-0 w-full h-full z-10"
-  style="background-color: {backgroundColor};"
+  style="background-color: {$backgroundColor};"
 >
   {#if showSvg}
     {#key svgKey}
@@ -669,7 +722,7 @@
       >
         {#each dots as { cx, cy, r, id }, index}
           {#if demand === "&lt; 1" || r >= parseFloat(demand)}
-            <circle {id} {cx} {cy} {r} fill={foregroundColor} />
+            <circle {id} {cx} {cy} {r} fill={$foregroundColor} />
           {/if}
         {/each}
       </svg>
@@ -681,8 +734,8 @@
   @import url("https://fonts.googleapis.com/css2?family=Merriweather:wght@400&display=swap");
 
   :root {
-    --background-color: {backgroundColor};
-    --foreground-color: {foregroundColor};
+    --background-color: {$backgroundColor};
+    --foreground-color: {$foregroundColor};
   }
 
   @keyframes fadeIn {
