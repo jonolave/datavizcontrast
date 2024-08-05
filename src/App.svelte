@@ -186,7 +186,7 @@
   // Foreground colour input fields
   // Function to validate and set the foreground color
   function validateForegroundColor(value) {
-    console.log("Validating foreground color", value);
+    // console.log("Validating foreground color", value);
     try {
       const color = chroma(value).hex(); // Convert color name to hex
       if (chroma.valid(color)) {
@@ -215,7 +215,7 @@
 
   // Background colour input fields
   function validateBackgroundColor(value) {
-    console.log("Validating background color", value);
+    // console.log("Validating background color", value);
     try {
       const color = chroma(value).hex(); // Convert color name to hex
       if (chroma.valid(color)) {
