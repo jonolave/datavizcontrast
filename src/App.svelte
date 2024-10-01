@@ -32,6 +32,14 @@
   let svgKey = 0;
   let showSvg = true;
 
+  // Temporary variables to hold input while typing
+  let tempBackgroundColor = "#EAC305";
+  let tempForegroundColor = "#000000";
+
+  // Validation flags
+  let backgroundIsValid = true;
+  let foregroundIsValid = true;
+
   // Apply colors from URL if available
   applyColorsFromUrl();
 
@@ -148,6 +156,65 @@
     // updateUrlWithColors(); // Update the URL
   }
 
+  // Validate and update tempForegroundColor but only set foregroundColor when valid
+  function validateForegroundColor(value) {
+    // Update the temporary variable while typing
+    tempForegroundColor = value;
+
+    // Use chroma-js to check if the value is a valid color (supports both color names and hex codes)
+    if (chroma.valid(value)) {
+      try {
+        // Convert the value (color name or hex) to a hex color
+        const color = chroma(value).hex();
+        console.log("Valid color:", color);
+
+        // Update the foregroundColor store with the valid color
+        foregroundColor.set(color);
+        foregroundIsValid = true;
+
+        // Force re-render if necessary
+        forceReRenderDots(); // Optional, depending on your needs
+        // updateUrlWithColors(); // Optional, depending on your needs
+      } catch (error) {
+        console.error("Error while converting color:", error);
+        foregroundIsValid = false;
+      }
+    } else {
+      // Mark the color as invalid if chroma-js validation fails
+      foregroundIsValid = false;
+    }
+  }
+
+  // Validate and update tempBackgroundColor but only set backgroundColor when valid
+  function validateBackgroundColor(value) {
+  // Update the temporary variable while typing
+  tempBackgroundColor = value;
+
+  // Use chroma-js to check if the value is a valid color (supports both color names and hex codes)
+  if (chroma.valid(value)) {
+    try {
+      // Convert the value (color name or hex) to a hex color
+      const color = chroma(value).hex();
+      console.log("Valid color:", color);
+
+      // Update the foregroundColor store with the valid color
+      backgroundColor.set(color);
+      backgroundIsValid = true;
+
+      // Force re-render if necessary
+      forceReRenderDots(); // Optional, depending on your needs
+      // updateUrlWithColors(); // Optional, depending on your needs
+
+    } catch (error) {
+      console.error("Error while converting color:", error);
+      backgroundIsValid = false;
+    }
+  } else {
+    // Mark the color as invalid if chroma-js validation fails
+    backgroundIsValid = false;
+  }
+}
+
   // Functions to handle input events for foreground color
   function updateForegroundColor(event) {
     validateForegroundColor(event.target.value);
@@ -175,34 +242,10 @@
     document.querySelector("#backgroundColor").value = $backgroundColor;
   }
 
-  let backgroundIsValid = true;
-  let foregroundIsValid = true;
   let darkerBackgroundColor;
 
   $: if (backgroundIsValid) {
     darkerBackgroundColor = chroma($backgroundColor).darken(2).alpha(0.3).css();
-  }
-
-  // Foreground colour input fields
-  // Function to validate and set the foreground color
-  function validateForegroundColor(value) {
-    console.log("Validating foreground color", value);
-    try {
-      const color = chroma(value).hex(); // Chroma håndterer både fargenavn og hex-koder
-
-      if (chroma.valid(color)) {
-        console.log("Valid color", color);
-        foregroundColor.set(color);
-        foregroundIsValid = true;
-        forceReRenderDots(); // Force re-render with new color
-        // updateUrlWithColors(); // Update the URL
-      } else {
-        foregroundIsValid = false;
-      }
-    } catch (error) {
-      foregroundIsValid = false;
-    }
-    // updateInputFields();
   }
 
   function handleForegroundBlur(event) {
@@ -213,27 +256,6 @@
     if (event.key === "Enter") {
       validateForegroundColor(event.target.value);
     }
-  }
-
-  // Background colour input fields
-  function validateBackgroundColor(value) {
-    console.log("Validating background color", value);
-
-    try {
-      const color = chroma(value).hex();
-
-      if (chroma.valid(color)) {
-        backgroundColor.set(color);
-        backgroundIsValid = true;
-        forceReRenderDots(); // Force re-render with new color
-        // updateUrlWithColors(); // Update the URL
-      } else {
-        backgroundIsValid = false;
-      }
-    } catch (error) {
-      backgroundIsValid = false;
-    }
-    // updateInputFields();
   }
 
   function handleBackgroundBlur(event) {
@@ -475,7 +497,7 @@
           <a href="https://github.com/Myndex/SAPC-APCA/discussions/39">
             the Non-Text Minimums table (image)
           </a>
-           from Myndex, marked "Preliminary – Feb 2, 2022".
+          from Myndex, marked "Preliminary – Feb 2, 2022".
         </p>
         <p>
           APCA might be included in WCAG 3, but is still in development and
@@ -505,7 +527,7 @@
           >
             reach out
           </a>
-           if you have feedback or questions!
+          if you have feedback or questions!
         </p>
         <p>
           This page was built using
@@ -571,7 +593,7 @@
             on:blur={updateForegroundColor}
             on:keydown={updateForegroundColorOnEnter}
             on:input={handleForegroundInput}
-            bind:value={$foregroundColor}
+            bind:value={tempForegroundColor}
           />
         </div>
         {#if !foregroundIsValid}
@@ -601,7 +623,7 @@
             on:blur={updateBackgroundColor}
             on:keydown={updateBackgroundColorOnEnter}
             on:input={handleBackgroundInput}
-            bind:value={$backgroundColor}
+            bind:value={tempBackgroundColor}
           />
         </div>
         {#if !backgroundIsValid}
