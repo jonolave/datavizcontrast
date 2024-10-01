@@ -186,10 +186,12 @@
   // Foreground colour input fields
   // Function to validate and set the foreground color
   function validateForegroundColor(value) {
-    // console.log("Validating foreground color", value);
+    console.log("Validating foreground color", value);
     try {
-      const color = chroma(value).hex(); // Convert color name to hex
+      const color = chroma(value).hex(); // Chroma håndterer både fargenavn og hex-koder
+
       if (chroma.valid(color)) {
+        console.log("Valid color", color);
         foregroundColor.set(color);
         foregroundIsValid = true;
         forceReRenderDots(); // Force re-render with new color
@@ -215,9 +217,11 @@
 
   // Background colour input fields
   function validateBackgroundColor(value) {
-    // console.log("Validating background color", value);
+    console.log("Validating background color", value);
+
     try {
-      const color = chroma(value).hex(); // Convert color name to hex
+      const color = chroma(value).hex();
+
       if (chroma.valid(color)) {
         backgroundColor.set(color);
         backgroundIsValid = true;
@@ -247,7 +251,10 @@
 
   // WCAG contrast, check only if valid colours
   $: if (foregroundIsValid && backgroundIsValid) {
-    wcagContrast = checkColors($foregroundColor, $backgroundColor).contrast;
+    const fgHex = chroma($foregroundColor).hex();
+    const bgHex = chroma($backgroundColor).hex();
+
+    wcagContrast = checkColors(fgHex, bgHex).contrast;
   } else {
     wcagContrast = 0;
   }
@@ -255,12 +262,12 @@
   // APCA contrast, check only if valid colours
   // https://www.npmjs.com/package/apca-w3
   $: if (foregroundIsValid && backgroundIsValid) {
+    const fgHex = chroma($foregroundColor).hex();
+    const bgHex = chroma($backgroundColor).hex();
+
     Lc = Math.round(
       Math.abs(
-        APCAcontrast(
-          sRGBtoY(colorParsley($foregroundColor)),
-          sRGBtoY(colorParsley($backgroundColor))
-        )
+        APCAcontrast(sRGBtoY(colorParsley(fgHex)), sRGBtoY(colorParsley(bgHex)))
       )
     );
   } else {
@@ -454,8 +461,9 @@
         <p>
           The Advanced Perceptual Contrast Algorithm <a
             href="https://git.apcacontrast.com/documentation/APCAeasyIntro"
-            >(APCA)</a
           >
+            (APCA)
+          </a>
           is a method used to determine the readability of text and graphics. APCA
           takes human perception into account and corrects some of the faults in
           the current WCAG 2 contrast algorithm.
@@ -464,9 +472,10 @@
           APCA measures lightness contrast as a value from Lc 0 (no contrast) to
           Lc 106 (maximum contrast). The contrast requirements on this page are
           extracted from
-          <a href="https://github.com/Myndex/SAPC-APCA/discussions/39"
-            >the Non-Text Minimums table (image)</a
-          > from Myndex, marked "Preliminary – Feb 2, 2022".
+          <a href="https://github.com/Myndex/SAPC-APCA/discussions/39">
+            the Non-Text Minimums table (image)
+          </a>
+           from Myndex, marked "Preliminary – Feb 2, 2022".
         </p>
         <p>
           APCA might be included in WCAG 3, but is still in development and
@@ -484,27 +493,38 @@
           />
           This tool is made by Jon Olav Eikenes, a Norwegian information designer
           in the design system team at
-          <a href="https://schibsted.com/">Schibsted Marketplaces</a>.
+          <a href="https://schibsted.com/">Schibsted Marketplaces</a>
+          .
         </p>
         <p>
           In Schibsted Marketplaces, we have used APCA for developing an
           accessible colour palette. For text contrast there are several APCA
           contrast checkers available, but we did not find one specifically for
           visual elements. So we made our own. Feel free to <a
-            href="https://www.linkedin.com/in/jonolave/">reach out</a
-          > if you have feedback or questions!
+            href="https://www.linkedin.com/in/jonolave/"
+          >
+            reach out
+          </a>
+           if you have feedback or questions!
         </p>
         <p>
           This page was built using
-          <a href="https://www.npmjs.com/package/apca-w3">APCA-3</a>,
-          <a href="https://github.com/Myndex/colorparsley/">colorParsley</a>,
-          <a href="https://chir.ag/projects/ntc/">Name that Color</a>,
-          <a href="https://www.npmjs.com/package/chroma-js">Chroma.js</a>,
-          <a href="https://svelte.dev/">Svelte</a>,
-          <a href="https://svelte-awesome-color-picker.vercel.app/"
-            >Svelte awesome color picker</a
-          >, and
-          <a href="https://warp-ds.github.io/tech-docs/">WARP</a>.
+          <a href="https://www.npmjs.com/package/apca-w3">APCA-3</a>
+          ,
+          <a href="https://github.com/Myndex/colorparsley/">colorParsley</a>
+          ,
+          <a href="https://chir.ag/projects/ntc/">Name that Color</a>
+          ,
+          <a href="https://www.npmjs.com/package/chroma-js">Chroma.js</a>
+          ,
+          <a href="https://svelte.dev/">Svelte</a>
+          ,
+          <a href="https://svelte-awesome-color-picker.vercel.app/">
+            Svelte awesome color picker
+          </a>
+          , and
+          <a href="https://warp-ds.github.io/tech-docs/">WARP</a>
+          .
         </p>
         <p class="h-64"></p>
       </div>
@@ -531,9 +551,9 @@
     <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24">
       <!-- Input foreground -->
       <div class="input-group flex flex-col mt-16">
-        <label class="font-bold text-caption" for="foregroundColor"
-          >Foreground colour</label
-        >
+        <label class="font-bold text-caption" for="foregroundColor">
+          Foreground colour
+        </label>
         <div class="s-bg mt-4 px-6 py-6 flex items-center rounded gap-4">
           <ColorPicker
             on:input={handleForegroundInput}
@@ -561,9 +581,9 @@
 
       <!-- Input background -->
       <div class="input-group flex flex-col mt-16">
-        <label class="font-bold text-caption" for="backgroundColor"
-          >Background colour</label
-        >
+        <label class="font-bold text-caption" for="backgroundColor">
+          Background colour
+        </label>
         <div class="s-bg mt-4 px-6 py-6 flex items-center rounded gap-4">
           <ColorPicker
             on:input={handleBackgroundInput}
@@ -592,12 +612,12 @@
 
     <!-- Buttons -->
     <div class="flex flex-wrap gap-16">
-      <w-button full-width variant="primary" on:click={newRandomColours}
-        >Random colours</w-button
-      >
-      <w-button full-width variant="secondary" on:click={swapColours}
-        >Swap colours</w-button
-      >
+      <w-button full-width variant="primary" on:click={newRandomColours}>
+        Random colours
+      </w-button>
+      <w-button full-width variant="secondary" on:click={swapColours}>
+        Swap colours
+      </w-button>
     </div>
   </div>
 
