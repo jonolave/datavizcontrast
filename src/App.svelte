@@ -513,7 +513,7 @@
             src="/jonolaveikenes.jpg"
             alt="Portrait of Jon Olav Eikenes, a white man with grey hair, glasses and short beard"
           />
-          This tool is made by Jon Olav Eikenes, a Norwegian information designer
+          This tool was made by information designer Jon Olav Eikenes while working
           in the design system team at
           <a href="https://schibsted.com/">Schibsted Marketplaces</a>
           .
@@ -543,9 +543,7 @@
           ,
           <a href="https://svelte-awesome-color-picker.vercel.app/">
             Svelte awesome color picker
-          </a>
-          , and
-          <a href="https://warp-ds.github.io/tech-docs/">WARP</a>
+          </a>, and <a href="https://warp-ds.github.io/tech-docs/">WARP</a>
           .
         </p>
         <p class="h-64"></p>
