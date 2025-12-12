@@ -563,14 +563,14 @@
 >
   <!-- Input box -->
   <div
-    class="whiteblurbox w-fit z-10 rounded-8 mx-16 md:mx-24 my-[140] p-24 md:p-40"
+    class="whiteblurbox z-10 rounded-8 mx-16 md:mx-24 mt-[120] md:mt-[280] mb-[16] max-w-[800] p-24 md:p-40"
     class:hidden={!$infoIsHidden && $smallScreen}
-    style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
+    style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor}; width: calc(100% - 32px);"
   >
     <h2 class="merriweather-font text-xl">Choose colours</h2>
     <p>Use the colour picker, enter colour name or HEX code</p>
     <!-- Input fields -->
-    <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24">
+    <div class="flex flex-wrap gap-x-24 gap-y-8 mb-24 w-full">
       <!-- Input foreground -->
       <div class="input-group flex flex-col mt-16">
         <label class="font-bold text-caption" for="foregroundColor">
@@ -647,7 +647,7 @@
   <div
     class="whiteblurbox flex flex-col bleed justify-start rounded-8 max-w-[800] mx-16 md:mx-24 mt-40 mb-[600] p-24 md:p-40"
     class:hidden={!$infoIsHidden && $smallScreen}
-    style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor};"
+    style="box-shadow: 0px 4px 8px 0px {darkerBackgroundColor}; width: calc(100% - 32px);"
   >
     <h2 class="merriweather-font text-xl">
       Contrast for {foregroundColorName} on {backgroundColorName}
